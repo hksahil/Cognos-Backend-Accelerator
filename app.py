@@ -96,36 +96,37 @@ def parse_xml(xml_file):
     return namespaces
 
 def main():
-    st.title("Package Manager Metadata Extractor")
+    st.title("Cognos Backend Accelerator", help="Extract Metadata of Datasources from Framework Manager")
     
     xml_file = st.file_uploader("Upload XML file", type=["xml"])
     if xml_file is not None:
         namespaces = parse_xml(xml_file)
-        tabs = ["Namespace", "Data Sources"]
-        selected_tab = st.sidebar.selectbox("Select Tab", tabs)
+        # tabs = ["Namespace", "Data Sources"]
+        # selected_tab = st.sidebar.selectbox("Select Tab", tabs)
 
-        if selected_tab == "Namespace":
+        if 1==1:
             if namespaces:
                 for index, namespace in enumerate(namespaces, start=1):
-                    st.write(f"## Namespace {index}:")
-                    st.write(f"Name: {namespace['name']}")
-                    st.write(f"Last Changed: {namespace['lastChanged']}")
-                    st.write(f"Last Changed By: {namespace['lastChangedBy']}")
-                    st.write("---")
+                    # st.write(f"## Namespace {index}:")
+                    # st.write(f"Name: {namespace['name']}")
+                    # st.write(f"Last Changed: {namespace['lastChanged']}")
+                    # st.write(f"Last Changed By: {namespace['lastChangedBy']}")
+                    # st.write("---")
+                    print('hi')
 
-                    st.write("### Folder Details:")
-                    folder_df = pd.DataFrame(namespace['folders'])
-                    st.write(folder_df)
+                    # st.write("### Folder Details:")
+                    # folder_df = pd.DataFrame(namespace['folders'])
+                    # st.write(folder_df)
 
-                    st.write("### Query Details:")
-                    for query in namespace['queries']:
-                        st.write(f"- Name: {query['name']}")
-                        st.write(f"  Description: {query['description']}")
-                        st.write(f"  SQL: {query['sql']}")
-                        st.write("  Query Items:")
-                        query_item_df = pd.DataFrame(query['queryItems'])
-                        st.write(query_item_df)
-                    st.write("---")
+                    #st.write("### Query Details:")
+                    #for query in namespace['queries']:
+                        #st.write(f"- Name: {query['name']}")
+                        #st.write(f"  Description: {query['description']}")
+                        #st.write(f"  SQL: {query['sql']}")
+                        #st.write("  Query Items:")
+                        #query_item_df = pd.DataFrame(query['queryItems'])
+                        #st.write(query_item_df)
+                    #st.write("---")
 
         elif selected_tab == "Data Sources":
             data_sources = []
@@ -138,6 +139,40 @@ def main():
                 st.write(data_sources_df)
             else:
                 st.write("No data sources found.")
+        
+        # Consolidate all query items into a single dataframe
+        consolidated_data = []
+        for namespace in namespaces:
+            namespace_name = namespace['name']
+            for query in namespace['queries']:
+                query_name = query['name']
+                sql_query = query['sql']
+                for item in query['queryItems']:
+                    item['queryName'] = query_name
+                    item['sqlQuery'] = sql_query
+                    item['namespace'] = namespace_name
+                    item['columnName'] = item.pop('name')
+                    item['columnDescription'] = item.pop('description')
+                    item['externalColumnName'] = item.pop('externalName')
+                    consolidated_data.append(item)
+        
+        if consolidated_data:
+            final_df = pd.DataFrame(consolidated_data)
+            final_df = final_df[['namespace', 'queryName', 'sqlQuery', 'columnName', 'externalColumnName', 'columnDescription', 'dataType']]
+            final_df.rename(columns={'queryName':'table'},inplace=True)
+            st.info("Package Analysis")
+            st.write(final_df)
+                # Add download button for the final dataframe
+            
+            csv = final_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="Download data as CSV",
+                data=csv,
+                file_name='final_backend_data.csv',
+                mime='text/csv',
+    )
+        else:
+            st.write("No query data found.")
 
 if __name__ == "__main__":
     main()
