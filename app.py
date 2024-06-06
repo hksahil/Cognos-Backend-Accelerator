@@ -22,6 +22,9 @@ def parse_xml(xml_file):
         except AttributeError:
             namespace_info['lastChangedBy'] = "N/A"
 
+        # Check if the namespace is a business layer
+        is_business_layer = "Business Layer" in namespace_info['name']
+
         # Fetch folder details
         folder_details = []
         for folder in namespace.findall('.//{http://www.developer.cognos.com/schemas/bmt/60/12}folder'):
@@ -85,6 +88,16 @@ def parse_xml(xml_file):
                     item_info['dataType'] = query_item.find('{http://www.developer.cognos.com/schemas/bmt/60/12}datatype').text
                 except AttributeError:
                     item_info['dataType'] = "N/A"
+
+                # Add refobj for business layer
+                if is_business_layer:
+                    try:
+                        item_info['refobj'] = query_item.find('.//{http://www.developer.cognos.com/schemas/bmt/60/12}refobj').text
+                    except AttributeError:
+                        item_info['refobj'] = "N/A"
+                else:
+                    item_info['refobj'] = "N/A"
+
                 query_item_info.append(item_info)
             query_info['queryItems'] = query_item_info
 
@@ -158,8 +171,8 @@ def main():
         
         if consolidated_data:
             final_df = pd.DataFrame(consolidated_data)
-            final_df = final_df[['namespace', 'queryName', 'sqlQuery', 'columnName', 'externalColumnName', 'columnDescription', 'dataType']]
-            final_df.rename(columns={'queryName':'table'},inplace=True)
+            final_df = final_df[['namespace', 'queryName', 'sqlQuery', 'columnName', 'externalColumnName', 'columnDescription', 'dataType', 'refobj']]
+            final_df.rename(columns={'queryName':'table'}, inplace=True)
             st.info("Package Analysis")
             st.write(final_df)
                 # Add download button for the final dataframe
@@ -170,7 +183,7 @@ def main():
                 data=csv,
                 file_name='final_backend_data.csv',
                 mime='text/csv',
-    )
+            )
         else:
             st.write("No query data found.")
 
