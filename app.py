@@ -89,14 +89,30 @@ def parse_xml(xml_file):
                 except AttributeError:
                     item_info['dataType'] = "N/A"
 
-                # Add refobj for business layer
+                # Add expression and refobjs for business layer
                 if is_business_layer:
                     try:
-                        item_info['refobj'] = query_item.find('.//{http://www.developer.cognos.com/schemas/bmt/60/12}refobj').text
+                        expression_element = query_item.find('{http://www.developer.cognos.com/schemas/bmt/60/12}expression')
+                        expression = ET.tostring(expression_element, encoding='unicode', method='text')
+                        item_info['expression'] = expression.strip()
                     except AttributeError:
-                        item_info['refobj'] = "N/A"
+                        item_info['expression'] = "N/A"
+
+                    item_info['refobjs'] = []
+                    try:
+                        refobjs = query_item.findall('.//{http://www.developer.cognos.com/schemas/bmt/60/12}refobj')
+                        for refobj in refobjs:
+                            item_info['refobjs'].append(refobj.text)
+                    except AttributeError:
+                        item_info['refobjs'] = ["N/A"]
                 else:
-                    item_info['refobj'] = "N/A"
+                    item_info['expression'] = "N/A"
+                    item_info['refobjs'] = ["N/A"]
+
+                try:
+                    item_info['aggregate'] = query_item.find('{http://www.developer.cognos.com/schemas/bmt/60/12}regularAggregate').text
+                except AttributeError:
+                    item_info['aggregate'] = "N/A"
 
                 query_item_info.append(item_info)
             query_info['queryItems'] = query_item_info
@@ -114,45 +130,11 @@ def main():
     xml_file = st.file_uploader("Upload XML file", type=["xml"])
     if xml_file is not None:
         namespaces = parse_xml(xml_file)
-        # tabs = ["Namespace", "Data Sources"]
-        # selected_tab = st.sidebar.selectbox("Select Tab", tabs)
 
-        if 1==1:
-            if namespaces:
-                for index, namespace in enumerate(namespaces, start=1):
-                    # st.write(f"## Namespace {index}:")
-                    # st.write(f"Name: {namespace['name']}")
-                    # st.write(f"Last Changed: {namespace['lastChanged']}")
-                    # st.write(f"Last Changed By: {namespace['lastChangedBy']}")
-                    # st.write("---")
-                    print('hi')
+        if namespaces:
+            for index, namespace in enumerate(namespaces, start=1):
+                print('hi')
 
-                    # st.write("### Folder Details:")
-                    # folder_df = pd.DataFrame(namespace['folders'])
-                    # st.write(folder_df)
-
-                    #st.write("### Query Details:")
-                    #for query in namespace['queries']:
-                        #st.write(f"- Name: {query['name']}")
-                        #st.write(f"  Description: {query['description']}")
-                        #st.write(f"  SQL: {query['sql']}")
-                        #st.write("  Query Items:")
-                        #query_item_df = pd.DataFrame(query['queryItems'])
-                        #st.write(query_item_df)
-                    #st.write("---")
-
-        elif selected_tab == "Data Sources":
-            data_sources = []
-            for namespace in namespaces:
-                for ds in namespace.get("datasources", []):
-                    data_sources.append(ds)
-            if data_sources:
-                data_sources_df = pd.DataFrame(data_sources)
-                st.write("## Data Sources")
-                st.write(data_sources_df)
-            else:
-                st.write("No data sources found.")
-        
         # Consolidate all query items into a single dataframe
         consolidated_data = []
         for namespace in namespaces:
@@ -167,16 +149,19 @@ def main():
                     item['columnName'] = item.pop('name')
                     item['columnDescription'] = item.pop('description')
                     item['externalColumnName'] = item.pop('externalName')
+                    item['expression'] = item.pop('expression')
+                    item['refobjs'] = ", ".join(item['refobjs'])  # Combine all refobjs into a single string
+                    item['aggregate'] = item.pop('aggregate')
                     consolidated_data.append(item)
         
         if consolidated_data:
             final_df = pd.DataFrame(consolidated_data)
-            final_df = final_df[['namespace', 'queryName', 'sqlQuery', 'columnName', 'externalColumnName', 'columnDescription', 'dataType', 'refobj']]
+            final_df = final_df[['namespace', 'queryName', 'sqlQuery', 'columnName', 'externalColumnName', 'columnDescription', 'dataType', 'expression', 'aggregate']]
             final_df.rename(columns={'queryName':'table'}, inplace=True)
             st.info("Package Analysis")
             st.write(final_df)
-                # Add download button for the final dataframe
             
+            # Add download button for the final dataframe
             csv = final_df.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="Download data as CSV",
