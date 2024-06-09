@@ -120,6 +120,30 @@ def parse_xml(xml_file):
             query_details.append(query_info)
         namespace_info['queries'] = query_details
 
+        # Fetch shortcut details
+        shortcut_details = []
+        for shortcut in namespace.findall('.//{http://www.developer.cognos.com/schemas/bmt/60/12}shortcut'):
+            shortcut_info = {}
+            try:
+                shortcut_info['name'] = shortcut.find('{http://www.developer.cognos.com/schemas/bmt/60/12}name').text
+            except AttributeError:
+                shortcut_info['name'] = "N/A"
+            try:
+                shortcut_info['description'] = shortcut.find('{http://www.developer.cognos.com/schemas/bmt/60/12}description').text or "No description available"
+            except AttributeError:
+                shortcut_info['description'] = "N/A"
+            try:
+                shortcut_info['refobj'] = shortcut.find('{http://www.developer.cognos.com/schemas/bmt/60/12}refobj').text
+            except AttributeError:
+                shortcut_info['refobj'] = "N/A"
+            try:
+                shortcut_info['targetType'] = shortcut.find('{http://www.developer.cognos.com/schemas/bmt/60/12}targetType').text
+            except AttributeError:
+                shortcut_info['targetType'] = "N/A"
+
+            shortcut_details.append(shortcut_info)
+        namespace_info['shortcuts'] = shortcut_details
+
         namespaces.append(namespace_info)
 
     return namespaces
@@ -153,7 +177,21 @@ def main():
                     item['refobjs'] = ", ".join(item['refobjs'])  # Combine all refobjs into a single string
                     item['aggregate'] = item.pop('aggregate')
                     consolidated_data.append(item)
-        
+            
+            for shortcut in namespace['shortcuts']:
+                item = {
+                    'namespace': namespace_name,
+                    'queryName': shortcut['name'],
+                    'sqlQuery': "N/A",
+                    'columnName': "N/A",
+                    'externalColumnName': "N/A",
+                    'columnDescription': shortcut['description'],
+                    'dataType': "N/A",
+                    'expression': shortcut['refobj'],
+                    'aggregate': "N/A"
+                }
+                consolidated_data.append(item)
+
         if consolidated_data:
             final_df = pd.DataFrame(consolidated_data)
             final_df = final_df[['namespace', 'queryName', 'sqlQuery', 'columnName', 'externalColumnName', 'columnDescription', 'dataType', 'expression', 'aggregate']]
